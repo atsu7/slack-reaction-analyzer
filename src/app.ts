@@ -87,7 +87,7 @@ app.shortcut('analyze_post_reaction', async ({ shortcut, ack, context }: any) =>
                         "elements": [
                             {
                                 "type": "image",
-                                "image_url": "https://ca.slack-edge.com/T02JKBSBK-UJL3GRUAC-f1a2855ce034-512",
+                                "image_url": "https://pbs.twimg.com/profile_images/625633822235693056/lNGUneLX_400x400.jpg",
                                 "alt_text": "cute cat"
                             },
                             {
@@ -220,7 +220,7 @@ app.action(('static_select-action-emoji'), async ({ ack, say, action, context, b
                         "elements": [
                             {
                                 "type": "image",
-                                "image_url": "https://ca.slack-edge.com/T02JKBSBK-UJL3GRUAC-f1a2855ce034-512",
+                                "image_url": "https://pbs.twimg.com/profile_images/625633822235693056/lNGUneLX_400x400.jpg",
                                 "alt_text": "cute cat"
                             },
                             {
