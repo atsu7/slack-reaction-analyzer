@@ -74,64 +74,11 @@ app.shortcut('analyze_post_reaction', async ({ shortcut, ack, context }: any) =>
                             "options": reactionOptions,
                             "action_id": "static_select-action-emoji"
                         }
-                    },
-                    {
-                        "type": "section",
-                        "text": {
-                            "type": "mrkdwn",
-                            "text": "*3人*"
-                        }
-                    },
-                    {
-                        "type": "context",
-                        "elements": [
-                            {
-                                "type": "image",
-                                "image_url": "https://pbs.twimg.com/profile_images/625633822235693056/lNGUneLX_400x400.jpg",
-                                "alt_text": "cute cat"
-                            },
-                            {
-                                "type": "mrkdwn",
-                                "text": "<@UJL3GRUAC>:+1::arrive-late:"
-                            }
-                        ]
-                    },
-                    {
-                        "type": "context",
-                        "elements": [
-                            {
-                                "type": "image",
-                                "image_url": "https://pbs.twimg.com/profile_images/625633822235693056/lNGUneLX_400x400.jpg",
-                                "alt_text": "cute cat"
-                            },
-                            {
-                                "type": "mrkdwn",
-                                "text": "<@UJN7RSQK0>"
-                            }
-                        ]
-                    },
-
-                    {
-                        "type": "actions",
-                        "elements": [
-                            {
-                                "type": "button",
-                                "text": {
-                                    "type": "plain_text",
-                                    "text": "チャンネルに共有",
-                                    "emoji": true
-                                },
-                                "value": "click_me_123",
-                                "action_id": "actionId-0"
-                            }
-                        ]
                     }
                 ]
             }
         });
         // console.log(result);
-
-
     }
     catch (error) {
         console.error(error);
@@ -163,7 +110,7 @@ app.action(('static_select-action-emoji'), async ({ ack, say, action, context, b
         const reactionCount: number = selectedReactionObj.count;
 
         const otherEmojisArray = reactionUsers.map((userId: string) => {
-            const otherReactionsObjs: { [key: string]: any; } = reactionsResult.message.reactions.filter((reactionobj: any) => { return reactionobj.name !== selectedEmojiName && reactionobj.users.includes(userId)}); //他のリアクションオブジェクトの配列
+            const otherReactionsObjs: { [key: string]: any; } = reactionsResult.message.reactions.filter((reactionobj: any) => { return reactionobj.name !== selectedEmojiName && reactionobj.users.includes(userId) }); //他のリアクションオブジェクトの配列
             const otherReactionNames: string[] = otherReactionsObjs.map((reactionobj: any) => reactionobj.name);
             return otherReactionNames;
         }) // [[Aさんの他の絵文字names],[Bさんの他の絵文字names],...]
@@ -180,8 +127,9 @@ app.action(('static_select-action-emoji'), async ({ ack, say, action, context, b
         // reactionUsers, otherEmojisArray, userPicsはそれぞれ同じ順番で並んでいるのでmapの順番で呼び出す
         let i: number = 0;
         const usersBlocks = reactionUsers.map((userId: string) => {
+            //otherEmojisArrayの空判定をしたほうがよい。（空白の::を消すため）
             let otherEmojisText: string = otherEmojisArray[i].join('::');
-            let pic =  picUrls[i]; //これなら動く。文字列にすると動かなくなる。
+            let pic = picUrls[i]; //これなら動く。文字列にすると動かなくなる。
             i++;
             return {
 
@@ -269,7 +217,7 @@ app.action(('static_select-action-emoji'), async ({ ack, say, action, context, b
                                     "emoji": true
                                 },
                                 "value": "click_me_123",
-                                "action_id": "actionId-0"
+                                "action_id": "share_in_a_channel"
                             }
                         ]
                     }
@@ -280,3 +228,26 @@ app.action(('static_select-action-emoji'), async ({ ack, say, action, context, b
         console.error(error);
     }
 })
+
+
+app.action('share_in_a_channel', async ({ ack, context, body }: any) => {
+    await ack();
+    const postBlock = [
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": `<https://${body.team.domain}.slack.com/archives/${body.view.private_metadata.split(',')[0]}/p${body.view.private_metadata.split(',')[1]}|こちらの投稿>に現時点でつけられたリアクションです。`,
+            }
+        },
+        ...body.view.blocks.slice(2, -1)]
+
+    await app.client.chat.postMessage({
+        token: context.botToken,
+        channel: body.view.private_metadata.split(',')[0],
+        text: `https://${body.team.domain}.slack.com/archives/${body.view.private_metadata.split(',')[0]}/p${body.view.private_metadata.split(',')[1]} に現時点でつけられたリアクションです。`,
+        blocks: postBlock, //　ユーザーを表示する部分のみ
+        unfurl_links: true
+
+    })
+});
