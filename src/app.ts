@@ -157,10 +157,52 @@ app.action(('static_select-action-emoji'), async ({ ack, say, action, context, b
             },
             "value": item.name
         }));
-        console.log(action);
+        const selectedEmojiName: string = action.selected_option.value;
+        const selectedReactionObj: { [key: string]: any; } = reactionsResult.message.reactions.find((reaction: any) => reaction.name === selectedEmojiName);
+        const reactionUsers: string[] = selectedReactionObj.users; //選択した絵文字を使用したユーザーのIDの配列
+        const reactionCount: number = selectedReactionObj.count;
+
+        const otherEmojisArray = reactionUsers.map((userId: string) => {
+            const otherReactionsObjs: { [key: string]: any; } = reactionsResult.message.reactions.filter((reactionobj: any) => { return reactionobj.name !== selectedEmojiName && reactionobj.users.includes(userId)}); //他のリアクションオブジェクトの配列
+            const otherReactionNames: string[] = otherReactionsObjs.map((reactionobj: any) => reactionobj.name);
+            return otherReactionNames;
+        }) // [[Aさんの他の絵文字names],[Bさんの他の絵文字names],...]
+
+        const userPics: any = reactionUsers.map(async (userId: string) => {
+            const payload = await app.client.users.profile.get({
+                token: context.botToken,
+                user: userId
+            })
+            return payload.profile.image_24;
+        });
+        const picUrls = await Promise.all(userPics).then((url) => url); //HACK userpicsがpromiseオブジェクトの配列だったので、変換（？）
+
+        // reactionUsers, otherEmojisArray, userPicsはそれぞれ同じ順番で並んでいるのでmapの順番で呼び出す
+        let i: number = 0;
+        const usersBlocks = reactionUsers.map((userId: string) => {
+            let otherEmojisText: string = otherEmojisArray[i].join('::');
+            let pic =  picUrls[i]; //これなら動く。文字列にすると動かなくなる。
+            i++;
+            return {
+
+                "type": "context",
+                "elements": [
+                    {
+                        "type": "image",
+                        "image_url": pic,
+                        "alt_text": "cute cat"
+                    },
+                    {
+                        "type": "mrkdwn",
+                        "text": `<@${userId}>:${otherEmojisText}:`
+                    }
+                ]
+            }
+        })
+
         const result = await app.client.views.update({
             token: context.botToken,
-            view_id:body.view.id,
+            view_id: body.view.id,
             view: {
                 "type": "modal",
                 "title": {
@@ -173,7 +215,7 @@ app.action(('static_select-action-emoji'), async ({ ack, say, action, context, b
                     "text": "閉じる",
                     "emoji": true
                 },
-                "private_metadata": body.view.private_metadata,
+                "private_metadata": body.view.private_metadata, // 投稿の情報を格納したデータを引き継ぐ
                 "blocks": [
                     {
                         "type": "section",
@@ -197,13 +239,13 @@ app.action(('static_select-action-emoji'), async ({ ack, say, action, context, b
                                 "emoji": true
                             },
                             "options": reactionOptions,
-                            "initial_option":{
+                            "initial_option": {
                                 "text": {
                                     "type": "plain_text",
-                                    "text": `:${action.selected_option.value}:`,
+                                    "text": `:${selectedEmojiName}:`,
                                     "emoji": true
                                 },
-                                "value": action.selected_option.value
+                                "value": selectedEmojiName
                             },
                             "action_id": "static_select-action-emoji"
                         }
@@ -212,38 +254,10 @@ app.action(('static_select-action-emoji'), async ({ ack, say, action, context, b
                         "type": "section",
                         "text": {
                             "type": "mrkdwn",
-                            "text": `:${action.selected_option.value}: *3人*`
+                            "text": `:${selectedEmojiName}: *${reactionCount}人*`
                         }
                     },
-                    {
-                        "type": "context",
-                        "elements": [
-                            {
-                                "type": "image",
-                                "image_url": "https://pbs.twimg.com/profile_images/625633822235693056/lNGUneLX_400x400.jpg",
-                                "alt_text": "cute cat"
-                            },
-                            {
-                                "type": "mrkdwn",
-                                "text": "<@UJL3GRUAC>:+1:update"
-                            }
-                        ]
-                    },
-                    {
-                        "type": "context",
-                        "elements": [
-                            {
-                                "type": "image",
-                                "image_url": "https://pbs.twimg.com/profile_images/625633822235693056/lNGUneLX_400x400.jpg",
-                                "alt_text": "cute cat"
-                            },
-                            {
-                                "type": "mrkdwn",
-                                "text": "<@UJN7RSQK0>"
-                            }
-                        ]
-                    },
-
+                    ...usersBlocks, // 配列を展開
                     {
                         "type": "actions",
                         "elements": [
