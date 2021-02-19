@@ -1,4 +1,7 @@
+import { AckFn, Context, MessageShortcut } from "@slack/bolt";
+
 const { App } = require('@slack/bolt');
+require('@slack/bolt');
 require('dotenv').config();
 
 const app = new App({
@@ -11,7 +14,7 @@ const app = new App({
     console.log('⚡️ Bolt app is running!');
 })();
 
-app.shortcut('analyze_post_reaction', async ({ shortcut, ack, context }: any) => {
+app.shortcut('analyze_post_reaction', async ({ shortcut, ack, context }: { shortcut: MessageShortcut, ack: any, context: Context }) => {
     await ack();
 
     try {
