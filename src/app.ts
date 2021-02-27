@@ -1,12 +1,102 @@
-import { AckFn, Context, MessageShortcut } from "@slack/bolt";
+import { AckFn, Context, MessageShortcut, Installation, InstallationQuery } from "@slack/bolt";
 
 const { App } = require('@slack/bolt');
 require('@slack/bolt');
 require('dotenv').config();
+let AWS = require("aws-sdk")
+
+AWS.config.update({
+    // local用
+    region: "us-east-1",
+    endpoint: "http://localhost:8000",
+    accessKeyId: 'fakeAccessKeyId',
+    secretAccessKey: 'fakeSecretAccessKey'
+});
+
+let docClient = new AWS.DynamoDB.DocumentClient();
 
 const app = new App({
-    token: process.env.SLACK_BOT_TOKEN,
-    signingSecret: process.env.SLACK_SIGNING_SECRET
+    signingSecret: process.env.SLACK_SIGNING_SECRET,
+    clientId: process.env.SLACK_CLIENT_ID,
+    clientSecret: process.env.SLACK_CLIENT_SECRET,
+    stateSecret: process.env.SLACK_STATE_SECRET,
+    scopes: ['chat:write', 'chat:write.public', 'commands', 'reactions:read', 'users.profile:read'],
+    installationStore: {
+        storeInstallation: async (installation: Installation) => {
+            console.log(installation)
+            if (installation.isEnterpriseInstall) {
+                // OrG 全体へのインストールに対応する場合
+                const params = {
+                    TableName: 'workspaces',
+                    Item: {
+                        workspaceId: installation.enterprise?.id,
+                        installationData: installation
+                    },
+                };
+                return await docClient.put(params, function (err: any, data: any) {
+                    if (err) console.log(err);
+                    else console.log(data);
+                });
+
+            } else {
+                // 単独のワークスペースへのインストールの場合
+                const params = {
+                    TableName: 'workspaces',
+                    Item: {
+                        workspaceId: installation.team?.id,
+                        installationData: installation
+                    },
+                };
+                return await docClient.put(params, function (err: any, data: any) {
+                    if (err) console.log(err);
+                    else console.log(data);
+                });
+            }
+
+        },
+        fetchInstallation: async (installQuery: any) => {
+            if (installQuery.isEnterpriseInstall && installQuery.enterpriseId !== undefined) {
+                // OrG 全体へのインストール情報の参照
+                const params = {
+                    TableName: 'workspaces',
+                    Key: {
+                        workspaceId: installQuery.enterpriseId
+                    }
+                };
+
+
+                const fetchedData = await docClient.get(params, function (err: any, data: any) {
+                    if (err) {
+                        console.log(err);
+                    } else {
+                        console.log(data.Item)
+                    }
+                }).promise();
+
+                return fetchedData.Item.installationData
+            }
+            if (installQuery.teamId !== undefined) {
+                // 単独のワークスペースへのインストール情報の参照
+                const params = {
+                    TableName: 'workspaces',
+                    Key: {
+                        workspaceId: installQuery.teamId
+                    }
+                };
+
+                const fetchedData = await docClient.get(params, function (err: any, data: any) {
+                    if (err) {
+                        console.log(err);
+                    } else {
+                        console.log(data.Item)
+                    }
+                }).promise();
+
+                return fetchedData.Item.installationData
+
+            }
+        },
+    },
 });
 
 (async () => {
