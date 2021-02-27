@@ -220,8 +220,11 @@ app.action(('static_select-action-emoji'), async ({ ack, say, action, context, b
         // reactionUsers, otherEmojisArray, userPicsはそれぞれ同じ順番で並んでいるのでmapの順番で呼び出す
         let i: number = 0;
         const usersBlocks = reactionUsers.map((userId: string) => {
-            //otherEmojisArrayの空判定をしたほうがよい。（空白の::を消すため）
-            let otherEmojisText: string = otherEmojisArray[i].join('::');
+            let otherEmojisText: string = '';
+            console.log(otherEmojisArray)
+            if (otherEmojisArray[i].length) {
+                otherEmojisText = ':' + otherEmojisArray[i].join('::') + ':';
+            }
             let pic = picUrls[i]; //これなら動く。文字列にすると動かなくなる。
             i++;
             return {
@@ -235,7 +238,7 @@ app.action(('static_select-action-emoji'), async ({ ack, say, action, context, b
                     },
                     {
                         "type": "mrkdwn",
-                        "text": `<@${userId}>:${otherEmojisText}:`
+                        "text": `<@${userId}>${otherEmojisText}`
                     }
                 ]
             }
