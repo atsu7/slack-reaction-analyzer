@@ -1,8 +1,9 @@
 import { AckFn, Context, MessageShortcut, Installation, InstallationQuery } from "@slack/bolt";
 
-const { App } = require('@slack/bolt');
+const { App,ExpressReceiver } = require('@slack/bolt');
 require('@slack/bolt');
 require('dotenv').config();
+const serverlessExpress = require('@vendia/serverless-express')
 let AWS = require("aws-sdk")
 
 AWS.config.update({
@@ -15,7 +16,7 @@ AWS.config.update({
 
 let docClient = new AWS.DynamoDB.DocumentClient();
 
-const app = new App({
+const expressReceiver = new ExpressReceiver({
     signingSecret: process.env.SLACK_SIGNING_SECRET,
     clientId: process.env.SLACK_CLIENT_ID,
     clientSecret: process.env.SLACK_CLIENT_SECRET,
@@ -97,12 +98,22 @@ const app = new App({
             }
         },
     },
+    processBeforeResponse: true
+  });
+
+const app = new App({
+    receiver: expressReceiver
 });
 
-(async () => {
-    await app.start(process.env.PORT || 3000);
-    console.log('⚡️ Bolt app is running!');
-})();
+// (async () => {
+//     await app.start(process.env.PORT || 3000);
+//     console.log('⚡️ Bolt app is running!');
+// })();
+
+// Lambda 関数のイベントを処理します
+module.exports.handler = serverlessExpress({
+    app: expressReceiver.app
+  });
 
 app.shortcut('analyze_post_reaction', async ({ shortcut, ack, context }: { shortcut: MessageShortcut, ack: any, context: Context }) => {
     await ack();
