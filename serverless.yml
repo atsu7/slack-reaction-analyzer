@@ -1,13 +1,27 @@
-service: serverless-bolt-js
+service: slack-reaction-analyzer
 frameworkVersion: '2'
 provider:
   name: aws
   runtime: nodejs12.x
+  stage: beta
+  region: ap-northeast-1
   environment:
-    SLACK_SIGNING_SECRET: ${env:SLACK_SIGNING_SECRET}
+    SLACK_SIGNING_SECRET: ${fileenv:SLACK_SIGNING_SECRET}
     SLACK_CLIENT_ID: ${env:SLACK_CLIENT_ID}
     SLACK_CLIENT_SECRET: ${env:SLACK_CLIENT_SECRET}
     SLACK_STATE_SECRET: ${env:SLACK_STATE_SECRET}
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:DescribeTable
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource: "arn:aws:dynamodb:${self:provider.region}:*:table/workspaces"
+
 functions:
   slack:
     handler: dist/app.handler
@@ -15,6 +29,36 @@ functions:
       - http:
           path: slack/events
           method: post
+      - http:
+          path: slack/install
+          method: get
+      - http:
+          path: slack/oauth_redirect
+          method: get
+        
 plugins:
   - serverless-offline
   - serverless-dynamodb-local
+  - serverless-dotenv-plugin
+resources:
+  Resources:
+    DynamoDbTable:
+      Type: 'AWS::DynamoDB::Table'
+      Properties:
+        # キーの型を指定
+        AttributeDefinitions:
+          -
+            AttributeName: workspaceId
+            AttributeType: S
+        # キーの種類を指定（ハッシュorレンジキー）
+        KeySchema:
+          -
+            AttributeName: workspaceId
+            KeyType: HASH
+        # プロビジョニングするキャパシティーユニットの設定
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        # テーブル名の指定
+        TableName: workspaces
+    

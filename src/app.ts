@@ -7,11 +7,8 @@ const serverlessExpress = require('@vendia/serverless-express')
 let AWS = require("aws-sdk")
 
 AWS.config.update({
-    // local用
-    region: "us-east-1",
-    endpoint: "http://localhost:8000",
-    accessKeyId: 'fakeAccessKeyId',
-    secretAccessKey: 'fakeSecretAccessKey'
+    region: "ap-northeast-1",
+    endpoint: "https://dynamodb.ap-northeast-1.amazonaws.com",
 });
 
 let docClient = new AWS.DynamoDB.DocumentClient();
