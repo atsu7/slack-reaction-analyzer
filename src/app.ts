@@ -1,6 +1,6 @@
 import { AckFn, Context, MessageShortcut, Installation, InstallationQuery } from "@slack/bolt";
 
-const { App,ExpressReceiver } = require('@slack/bolt');
+const { App, ExpressReceiver } = require('@slack/bolt');
 require('@slack/bolt');
 require('dotenv').config();
 const serverlessExpress = require('@vendia/serverless-express')
@@ -96,7 +96,7 @@ const expressReceiver = new ExpressReceiver({
         },
     },
     processBeforeResponse: true
-  });
+});
 
 const app = new App({
     receiver: expressReceiver
@@ -110,18 +110,29 @@ const app = new App({
 // Lambda 関数のイベントを処理します
 module.exports.handler = serverlessExpress({
     app: expressReceiver.app
-  });
+});
 
 app.shortcut('analyze_post_reaction', async ({ shortcut, ack, context }: { shortcut: MessageShortcut, ack: any, context: Context }) => {
     await ack();
 
     try {
-        const reactionsResult = await app.client.reactions.get({
-            token: context.botToken,
-            channel: shortcut.channel.id,
-            timestamp: shortcut.message.ts,
-            full: true
-        });
+        let reactionsResult
+        try {
+            reactionsResult = await app.client.reactions.get({
+                token: context.botToken,
+                channel: shortcut.channel.id,
+                timestamp: shortcut.message.ts,
+                full: true
+            });
+        } catch(error) {//FIX 正しくエラー判定していない
+            app.client.chat.postEphemeral({
+                token: context.botToken,
+                channel: shortcut.channel.id,
+                text: "使用するには、このチャンネルにbotを招待してください。\n`/invite @Reaction Analyzer`",
+                user: shortcut.user.id
+            })
+        }
+
 
         const reactionOptions = await reactionsResult.message.reactions.map((item: any) => ({
             "text": {
