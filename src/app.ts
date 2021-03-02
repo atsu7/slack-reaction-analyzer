@@ -124,7 +124,67 @@ app.shortcut('analyze_post_reaction', async ({ shortcut, ack, context }: { short
                 timestamp: shortcut.message.ts,
                 full: true
             });
-        } catch(error) {//FIX 正しくエラー判定していない
+
+            //FIXここ以降はtryの１つ外にあるべき
+            const reactionOptions = await reactionsResult.message.reactions.map((item: any) => ({
+                "text": {
+                    "type": "plain_text",
+                    "text": `:${item.name}:`,
+                    "emoji": true
+                },
+                "value": item.name
+            }));
+
+            const result = await app.client.views.open({
+                token: context.botToken,
+                // 適切な trigger_id を受け取ってから 3 秒以内に渡す
+                trigger_id: shortcut.trigger_id,
+                // view の値をペイロードに含む
+                view: {
+                    "type": "modal",
+                    "title": {
+                        "type": "plain_text",
+                        "text": "Emoji reaction analyzer",
+                        "emoji": true
+                    },
+                    "close": {
+                        "type": "plain_text",
+                        "text": "閉じる",
+                        "emoji": true
+                    },
+                    "private_metadata": `${shortcut.channel.id},${shortcut.message.ts}`, // private metadataで最初のメッセージ情報を引き継ぐ
+                    "blocks": [
+                        {
+                            "type": "section",
+                            "text": {
+                                "type": "plain_text",
+                                "text": "選択した絵文字でリアクションした人を表示します。他の絵文字は名前の横に表示されます。",
+                                "emoji": true
+                            }
+                        },
+                        {
+                            "type": "section",
+                            "text": {
+                                "type": "mrkdwn",
+                                "text": "表示する絵文字を選択してください。"
+                            },
+                            "accessory": {
+                                "type": "static_select",
+                                "placeholder": {
+                                    "type": "plain_text",
+                                    "text": "Select an item",
+                                    "emoji": true
+                                },
+                                "options": reactionOptions,
+                                "action_id": "static_select-action-emoji"
+                            }
+                        }
+                    ]
+                }
+            });
+            // console.log(result);
+        } catch (error) {//FIX 正しくエラー判定していない
+            console.log(error)
             app.client.chat.postEphemeral({
                 token: context.botToken,
                 channel: shortcut.channel.id,
@@ -134,63 +194,7 @@ app.shortcut('analyze_post_reaction', async ({ shortcut, ack, context }: { short
         }
 
 
-        const reactionOptions = await reactionsResult.message.reactions.map((item: any) => ({
-            "text": {
-                "type": "plain_text",
-                "text": `:${item.name}:`,
-                "emoji": true
-            },
-            "value": item.name
-        }));
 
-        const result = await app.client.views.open({
-            token: context.botToken,
-            // 適切な trigger_id を受け取ってから 3 秒以内に渡す
-            trigger_id: shortcut.trigger_id,
-            // view の値をペイロードに含む
-            view: {
-                "type": "modal",
-                "title": {
-                    "type": "plain_text",
-                    "text": "Emoji reaction analyzer",
-                    "emoji": true
-                },
-                "close": {
-                    "type": "plain_text",
-                    "text": "閉じる",
-                    "emoji": true
-                },
-                "private_metadata": `${shortcut.channel.id},${shortcut.message.ts}`, // private metadataで最初のメッセージ情報を引き継ぐ
-                "blocks": [
-                    {
-                        "type": "section",
-                        "text": {
-                            "type": "plain_text",
-                            "text": "選択した絵文字でリアクションした人を表示します。他の絵文字は名前の横に表示されます。",
-                            "emoji": true
-                        }
-                    },
-                    {
-                        "type": "section",
-                        "text": {
-                            "type": "mrkdwn",
-                            "text": "表示する絵文字を選択してください。"
-                        },
-                        "accessory": {
-                            "type": "static_select",
-                            "placeholder": {
-                                "type": "plain_text",
-                                "text": "Select an item",
-                                "emoji": true
-                            },
-                            "options": reactionOptions,
-                            "action_id": "static_select-action-emoji"
-                        }
-                    }
-                ]
-            }
-        });
-        // console.log(result);
     }
     catch (error) {
         console.error(error);
